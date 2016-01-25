@@ -21,6 +21,9 @@ TAG_CHANGE_RE = re.compile(r'\W+ TAG_CHANGE Entity=(?P<entity>.+) tag=(?P<tag>.+
 
 SHOW_ENTITY_RE = re.compile(r'\W+ SHOW_ENTITY Entity - Updating Entity=(?P<entity>.+) CardID=(?P<card_id>.+)')
 
+HERO_NAMES = ['Rexxar', 'Garrosh Hellscream', 'Andruid Wrynn', "Uther Lightbringer", "Valeera Sanguinar", "Gul'dan",
+              "Malfurion", ""]
+
 
 def chunks(l, n=2):
     """Yield successive n-sized chunks from l.
@@ -72,6 +75,12 @@ class Parser:
             logger.error("Could not parse tag change: {}".format(msg))
             return
         entity, tag, value = self.get_entity(m)
+        e_id = entity['id']
+        self.current_game.entities[e_id].update(tag=value)
+        name = entity['name']
+        if tag == 'NUM_TURNS_IN_PLAY' and name in HERO_NAMES:
+            logger.warn("{} in play: {}".format(name, value))
+        logger.info("{} {}={}".format(entity, tag, value))
 
     def get_entity(self, m):
         d = m.groupdict()
@@ -79,6 +88,8 @@ class Parser:
         entity = d['entity']
         if entity.startswith('['):
             entity = self.parse_entity(entity)
+        else:
+            entity = self.current_game.entities[entity]
         tag = d['tag']
         value = d['value']
         logger.info("{} {}={}".format(entity, tag, value))
@@ -93,6 +104,7 @@ class Parser:
             logger.error("Could not parse show entity: {}".format(msg))
             return
         entity, tag, value = self.get_entity(m)
+        logger.info("{} {}={}".format(entity, tag, value))
 
 
 @click.command()

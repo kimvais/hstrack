@@ -14,6 +14,9 @@ from hstrack.parse import Parser
 
 LOG_PATH = '/Applications/Hearthstone/Logs/Power.log'
 
+parser = Parser()
+remainder = str()
+
 
 @click.command()
 @click.option('--verbose', '-v', count=True)
@@ -21,25 +24,23 @@ def main(verbose):
     logging.basicConfig(level=50 - (10 * verbose))
     logger = logging.getLogger(__name__)
     fd = os.open(LOG_PATH, os.O_RDONLY)
-    lines = list()   # XXX: We only have a single partial line, not a list.
     logger.info("Seeked to {}".format(os.lseek(fd, 0, os.SEEK_END)))
-
-    parser = Parser()
 
     def reader():
         while True:
             buf = os.read(fd, 1024).decode('utf-8')
             logger.debug(buf)
             if not buf:
-                logger.debug(os.fstat(fd))
+                # logger.debug(os.fstat(fd))
                 break
             else:
-                x = buf.splitlines()
-                if lines and not lines[-1].endswith('\n'):
-                    x[0] = lines.pop(-1) + x[0]
-                for line in x:
+                lines = buf.splitlines()
+                if remainder:
+                    lines.insert(0, remainder + lines.pop(0))
+                for line in lines:
                     if not line.endswith('\n'):
-                        lines.append(line)
+                        logger.debug("Incomplete line: {}".format(line))
+                        remainder = line
                     else:
                         parser.process(line)
 
